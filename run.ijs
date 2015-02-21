@@ -1,15 +1,16 @@
+require 'rgb'
+require 'viewmat'
 
-
+NB. usage: vector2image matrix
+vector2image =: 3 : 0
+RGB <.255*| y
+)
 
 NB. takes boxed list of parameters
 NB. Camera Loc
 NB. Camera look at position
 NB. image dimensions
 NB. horizontal fov 
-
-require 'rgb'
-require 'viewmat'
-
 RayGen =: 3 : 0
 
 norm =. % +/&.(*:"_)"1
@@ -42,17 +43,46 @@ rayDir =. norm rayDir
 
 )
 
+NB. Return distance of sphere intersection 
+NB. Usage (spherePos ; sphereRadius ; materialIndex) intersectSphere ((dimensions, 3)$vector)
+IntersectSphere =: 3 : 0
+:
+norm =. % +/&.(*:"_)"1
+cross=. [: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)
+dot  =. +/ .*"1 
 
-NB. dimensions vector2image matrix
-vector2image =: 3 : 0
-RGB <.255*| y
+direction =. >1} y
+position =. >0} y
+center =. >0} x
+radius =. >1} x
+
+A =. dot~ direction
+B =. 2*(direction dot (position -"1 center))
+C =. (radius^2) -~ dot~ (position -"1 center) 
+
+
+lt2inf =. (_:`[@.([>0:))"0
+rootPart =. (*~B) - (4*A*C)
+rootPart =. lt2inf rootPart
+rootPart =. (%:"0) rootPart
+plusPart  =. rootPart +  -B
+minusPart =. rootPart -~ -B
+plusPart =. plusPart % 2*A
+minusPart =. minusPart % 2*A
+plusPart <. minusPart
+
 )
+
 
 
 NB. TESTING CODE
 
-dimensions =. 512 512
+dimensions =. 128 128
 
-(10) 6!:2 'rayDir =. >1} RayGen 0 0 0; 0 _1 0; 512 512; 1p1%2'
+rays =. RayGen 0 0 0; 0 _1 0; dimensions; 1p1%2
+sphere =. 0 _5 0; 1 ; 0
 
-NB. viewrgb vector2image rayDir
+inf20 =. (0:`[@.([>(-_:)))"0
+
+output =: sphere IntersectSphere rays
+

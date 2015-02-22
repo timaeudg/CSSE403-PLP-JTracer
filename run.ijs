@@ -19,7 +19,6 @@ dot  =. +/ .*
 
 cameraPos =. > 0 { y
 cameraLookAt =. norm > 1 { y
-dimensions =. > 2 { y
 fov =. > 3 { y
 
 w =. -cameraLookAt
@@ -73,8 +72,47 @@ minusPart =. minusPart % 2*A
 plusPart <. minusPart
 )
 
+IntersectTriangle =: 4 : 0 " 1 1
+norm =. % +/&.(*:"_)"1
+cross=. [: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)
+dot  =. +/ .*"1 
+
+direction =. >1} y
+assert (3 = ({: $ direction))
+position =. >0} y
+assert (3 = {:@$ position)
+p1 =. >0} x
+assert (3 = {:@$ p1)
+p2 =. >1} x
+assert (3 = {:@$ p2)
+p3 =. >2} x
+assert (3 = {:@$ p3)
+
+v1 =. p2 - p1
+v2 =. p3 - p2
+tNorm =. norm (v1 cross v2)
+
+time =: (tNorm dot (p1 -"1 position)) % (direction dot tNorm)
+
+intersectPoint =. position + direction * time
+
+v1v3 =. p1 - p3
+v2v1 =. p2 - p1
+v3v2 =. p3 - p2
+
+rayPointV1 =. intersectPoint -"1 p1
+rayPointV2 =. intersectPoint -"1 p2
+rayPointV3 =. intersectPoint -"1 p3
+
+test1 =. (v2v1 cross"1 rayPointV1) dot tNorm
+test2 =. (v3v2 cross"1 rayPointV2) dot tNorm
+test3 =. (v1v3 cross"1 rayPointV3) dot tNorm
+thing =:(0 < test1) *. (0 < test2) *. (0 < test3)
+convertToInf thing * time
+)
+
 convertToInf =: 3 : 0 "0
-if. 0 > y
+if. 0 >: y
 do. _
 else.
 y
@@ -109,14 +147,16 @@ combinedTValues
 
 NB. TESTING CODE
 
-dimensions =. 12 12
+dimensions =: 32 32
 
 rays =. RayGen 0 0 0; 0 _1 0; dimensions; 1p1%2
 sphere =. 0 _5 0; 1 ; 0
 sphere2 =. 2 _3 0; 0.5; 0
 spheres =. sphere ,: sphere2
+triangle =. 0 _5 _1; _1 _5 1; 1 _5 1
 
 inf20 =. (0:`[@.([>(-_:)))"0
-(spheres IntersectSpheres rays)
+NB. (spheres IntersectSpheres rays)
+triangle IntersectTriangle rays
 NB. viewmat convertToDrawable (spheres IntersectSpheres rays)
 

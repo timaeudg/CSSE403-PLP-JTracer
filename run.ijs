@@ -63,7 +63,6 @@ A =. dot~ direction
 B =. 2*(direction dot (position -"1 center))
 C =. (radius^2) -~ dot~ (position -"1 center) 
 
-NB.lt2inf =. (_:`[@.([>0:))"0
 rootPart =. (*~B) - (4*A*C)
 rootPart =. convertToInf rootPart
 rootPart =. (%:"0) rootPart
@@ -90,17 +89,27 @@ y
 end.
 )
 
+compareWithIndex =: 4 : 0 "1
+if. 0{x < 0{y
+do. x
+else.
+y
+end.
+)
+
 IntersectSpheres =: 4 : 0 
 sphereints =. x IntersectSphere y
 converted =. convertToInf sphereints
-combinedTValues =.  <./ converted
+sphereIndex =. i. # x
+indexAppended =.  converted ,"0 sphereIndex
+combinedTValues =.  (compareWithIndex)/ indexAppended
 combinedTValues
 )
 
 
 NB. TESTING CODE
 
-dimensions =. 128 128
+dimensions =. 12 12
 
 rays =. RayGen 0 0 0; 0 _1 0; dimensions; 1p1%2
 sphere =. 0 _5 0; 1 ; 0
@@ -108,6 +117,6 @@ sphere2 =. 2 _3 0; 0.5; 0
 spheres =. sphere ,: sphere2
 
 inf20 =. (0:`[@.([>(-_:)))"0
-
-viewmat convertToDrawable (spheres IntersectSpheres rays)
+(spheres IntersectSpheres rays)
+NB. viewmat convertToDrawable (spheres IntersectSpheres rays)
 

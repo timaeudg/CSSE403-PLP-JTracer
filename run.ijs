@@ -76,29 +76,9 @@ minusPart =. minusPart % 2*A
 plusPart <. minusPart
 )
 
-convertToInf =: 3 : 0 "0
-if. 0 > y
-do. _
-else.
-y
-end.
-)
-
-convertToDrawable =: 3 : 0 "0
-if. _ = y
-do. 0
-else.
-y
-end.
-)
-
-compareWithIndex =: 4 : 0 "1
-if. 0{x < 0{y
-do. x
-else.
-y
-end.
-)
+convertToInf =: 3 : 'if. 0>y do. _ else. y end.' "0
+convertToDrawable =: 3 : 'if. _ = y do. 0 else. y end.' "0
+compareWithIndex =: 4 : 'if. 0{x<0{y do. x else. y end.' "1
 
 convertHitpoints =: 3 : 0 "1
 first =. 0{ y
@@ -143,7 +123,7 @@ norm (x -"1 sphereCentreMap)
 
 NB. TESTING CODE
 
-dimensions =. 10 10
+dimensions =. 720 1280
 
 rays =. RayGen 0 0 0; 0 _1 0; dimensions; 1p1%2
 sphere =. 0 _5 0; 1 ; 0
@@ -152,6 +132,6 @@ spheres =. sphere ,: sphere2
 
 intersects =. (spheres IntersectSpheres rays)
 hitpoints =. rays GetHitpoints intersects
-hitpoints GetNormalFromSphere (intersects ; <spheres)
-NB. viewmat convertToDrawable (spheres IntersectSpheres rays)
+normals =. hitpoints GetNormalFromSphere (intersects ; <spheres)
+viewrgb vector2image convertToDrawable normals
 

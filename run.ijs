@@ -144,19 +144,30 @@ combinedTValues =.  (compareWithIndex)/ indexAppended
 combinedTValues
 )
 
+IntersectTriangles =: 4 : 0
+triangleInts =. x IntersectTriangle y
+triangleIndex =. i. # x
+indexAppended =. triangleInts ,"0 triangleIndex
+combinedTValues =. (compareWithIndex)/indexAppended
+combinedTValues
+)
+
 
 NB. TESTING CODE
-
-dimensions =: 32 32
+width =. 32
+height =. 32
+dimensions =: width,height
 
 rays =. RayGen 0 0 0; 0 _1 0; dimensions; 1p1%2
 sphere =. 0 _5 0; 1 ; 0
 sphere2 =. 2 _3 0; 0.5; 0
 spheres =. sphere ,: sphere2
-triangle =. 0 _5 _1; _1 _5 1; 1 _5 1
+triangle1 =. 0 _5 _1; _1 _5 1; 1 _5 1
+triangle2 =. 1 _6 _2; 1 _6 0; 2 _6 _1
+triangles =. triangle1,:triangle2
 
 inf20 =. (0:`[@.([>(-_:)))"0
-NB. (spheres IntersectSpheres rays)
-triangle IntersectTriangle rays
+(width, (height*2))$;(spheres IntersectSpheres rays)
+(width, (height*2))$; triangles IntersectTriangles rays
 NB. viewmat convertToDrawable (spheres IntersectSpheres rays)
 

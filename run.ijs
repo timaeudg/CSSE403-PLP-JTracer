@@ -51,13 +51,9 @@ cross=. [: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)
 dot  =. +/ .*"1 
 
 direction =. >1} y
-assert (3 = ({: $ direction))
 position =. >0} y
-assert (3 = {:@$ position)
 center =. >0} x
-assert (3 = $ center)
 radius =. >1} x
-assert (1 = $ radius)
 
 A =. dot~ direction
 B =. 2*(direction dot (position -"1 center))
@@ -106,6 +102,12 @@ combinedTValues =.  (compareWithIndex)/ indexAppended
 combinedTValues
 )
 
+GetHitpoints =: 4 : 0
+hitTValues =. 0{"1 y
+direction =. >1} x
+hitTValues * direction
+)
+
 
 NB. TESTING CODE
 
@@ -116,7 +118,7 @@ sphere =. 0 _5 0; 1 ; 0
 sphere2 =. 2 _3 0; 0.5; 0
 spheres =. sphere ,: sphere2
 
-inf20 =. (0:`[@.([>(-_:)))"0
-(spheres IntersectSpheres rays)
+intersects =. (spheres IntersectSpheres rays)
+rays GetHitpoints intersects
 NB. viewmat convertToDrawable (spheres IntersectSpheres rays)
 

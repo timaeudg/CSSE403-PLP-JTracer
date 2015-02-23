@@ -162,6 +162,7 @@ diffuse =. material * (toLight dot normals)
 specularColor =. (giveEmTehClampz (toCamera dot LR)) ^ specular
 
 color =. diffuse + specularColor
+color =. color +"1 ambient
 
 )
 
@@ -176,9 +177,11 @@ camera; dimensions; 123
 rays =. RayGen camera; dimensions; 1p1%2
 sphere =. 0 _5 0; 1 ; 0
 sphere2 =. 2 _3 0; 1; 0
-spheres =. sphere ,: sphere2
+sphere3 =. _2 _60 70; 58; 0
+sphere4 =. _12 _80 _30; 23;0
+spheres =. sphere , sphere2 , sphere3 ,: sphere4
 
-materials =. (1 0.5 0,:0 0.5 1) ; (3 10)
+materials =. (1 0.5 0,0 0.5 1,0.5 0.5 0.5,: 0.196 0.704 0.196 ) ; (3 10 75 25)
 
 intersects =. (spheres IntersectSpheres rays)
 hitpoints =. rays GetHitpoints intersects
@@ -194,6 +197,4 @@ biggestColor =. >./ >./ >./ drawableColor
 color =. drawableColor %"1 biggestColor
 NB.color
 viewrgb vector2image convertToDrawable drawableColor
-
-
 

@@ -3,13 +3,20 @@ require 'viewmat'
 
 NB. usage: vector2image matrix
 vector2image =: 3 : 0
-RGB <.255*| y
+BGR <.255*| y
 )
 
 norm =: 3 : 0 "1
-if. +./ y = _
+if. +./+./ y ="0 1 (_ __)
 do. y
-else. (% +/&.(*:"_)"1) y
+else. (% +/&.(*:"_)) y
+end.
+)
+
+dot =: 4 : 0 "1
+if. (+./+./ y ="0 1 (_ __)) +. (+./+./ x ="0 1 (_ __))
+do. _
+else. x (+/ .*) y
 end.
 )
 
@@ -21,12 +28,11 @@ NB. horizontal fov
 RayGen =: 3 : 0
 
 cross=. [: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)
-dot  =. +/ .* 
 
-cameraPos =. > 0 { y
-cameraLookAt =. norm > 1 { y
-dimensions =. > 2 { y
-fov =. > 3 { y
+cameraPos =. >0{>0{ y
+cameraLookAt =. norm >1{ > 0 { y
+dimensions =. > 1 { y
+fov =. > 2 { y
 
 w =. -cameraLookAt
 u =. 0 0 1 cross w
@@ -55,7 +61,6 @@ NB. Return distance of sphere intersection
 NB. Usage (spherePos ; sphereRadius ; materialIndex) intersectSphere ((dimensions, 3)$vector)
 IntersectSphere =: 4 : 0 " 1 1
 cross=. [: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)
-dot  =. +/ .*"1 
 
 direction =. >1} y
 position =. >0} y
@@ -92,6 +97,18 @@ end.
 
 )
 
+giveEmTehClampz =: 3 : 0 "0
+if. y < 0
+do. 0
+elseif. y = _
+do. _
+elseif. y > 1
+do. 1 
+elseif. 1
+do. y
+end.
+)
+
 IntersectSpheres =: 4 : 0 
 sphereints =. x IntersectSphere y
 converted =. convertToInf sphereints
@@ -121,17 +138,62 @@ norm (x -"1 sphereCentreMap)
 )
 
 
+shade =: 4 : 0
+cameraPos =. >0{>0{x
+light =. >1{x
+materials =. >2{x
+speculars =. >3{x
+
+hitpoints =. >0{y
+indicies =. >1{y
+normals =. >2{y
+
+toCamera =. norm (cameraPos -"1 hitpoints)
+toLight =. norm (light -"1 hitpoints)
+
+LR =. norm (toLight -~ (normals * 2 * (toLight dot normals)))
+
+ambient =. 0.1 0.1 0.1
+
+material =. indicies{"0 _ materials 
+specular =. indicies{"0 _ speculars
+
+diffuse =. material * (toLight dot normals)
+specularColor =. (giveEmTehClampz (toCamera dot LR)) ^ specular
+
+color =. diffuse + specularColor
+
+)
+
 NB. TESTING CODE
 
-dimensions =. 720 1280
+dimensions =. 512 512
 
-rays =. RayGen 0 0 0; 0 _1 0; dimensions; 1p1%2
+camera =. 0 0 0; 0 _1 0
+light =. 2 0 _4
+
+camera; dimensions; 123
+rays =. RayGen camera; dimensions; 1p1%2
 sphere =. 0 _5 0; 1 ; 0
-sphere2 =. 2 _3 0; 0.5; 0
+sphere2 =. 2 _3 0; 1; 0
 spheres =. sphere ,: sphere2
+
+materials =. (1 0.5 0,:0 0.5 1) ; (3 10)
 
 intersects =. (spheres IntersectSpheres rays)
 hitpoints =. rays GetHitpoints intersects
-normals =. hitpoints GetNormalFromSphere (intersects ; <spheres)
-viewrgb vector2image convertToDrawable normals
+indicies =. 1{"1 intersects
+normals =. hitpoints GetNormalsFromSphere (intersects ; <spheres)
+
+NB.viewrgb vector2image convertToDrawable normals
+
+color =. (camera; light; materials) shade (hitpoints; indicies; normals)
+drawableColor =. convertToDrawable color
+drawableColor =. giveEmTehClampz drawableColor
+biggestColor =. >./ >./ >./ drawableColor
+color =. drawableColor %"1 biggestColor
+NB.color
+viewrgb vector2image convertToDrawable drawableColor
+
+
 

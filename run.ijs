@@ -1,183 +1,97 @@
 require 'rgb'
 require 'viewmat'
 
-NB. ******************************
-NB. UTILITY FUNCTIONS
-NB. ******************************
-vector2image =: 3 : 0
-BGR <.255*| y
-)
+norm =: (% +/&.(*:"_))"1
+cross =:[: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)"1
+dot =: (+/ .*)"1
 
-norm =: 3 : 0 "1
-if. +./+./ y ="0 1 (_ __)
-do. y
-else. (% +/&.(*:"_)) y
-end.
-)
+NB. Using agenda on large datasets seems to crash J, fix until fixed
+ClampLt0 =: 3 : 'if. y<0 do. 0 else. y end.' "0
 
-dot =: 4 : 0 "1
-if. (+./+./ y ="0 1 (_ __)) +. (+./+./ x ="0 1 (_ __))
-do. _
-else. x (+/ .*) y
-end.
-)
+NB. Camera format =. (Position, lookAt, fov (in radians))
 
-cross =:[: > [: -&.>/ .(*&.>) (<"1=i.3) , ,:&:(<"0)
+NB. Sphere format =. (Position; radius; materialIndex)
+NB. Triangle format =. (v1; v2; v3; materialIndex)
+NB. Light format =. (Position, color)
+NB. Material Format =. (Color, specularFactor, reflectivity, opacity, IOR)
 
-convertToInf =: 3 : 'if. 0>:y do. _ else. y end.' "0
-convertToDrawable =: 3 : 'if. _ = y do. 0 else. y end.' "0
-compareWithIndex =: 4 : 'if. 0{x<0{y do. x else. y end.' "1
+NB. Scene format =. (spheres; triangles; lights; materials)
 
-convertHitpoints =: 3 : 0 "1
-first =. 0{ y
-second =. 1{y
-third =. 2{y
-isInfinite =. 3 : '+./ (y =/ _ __)'
-if. (isInfinite first) +. (isInfinite second) +. (isInfinite third)
-do. _,_,_
-else. y
-end.
+RayGen =: 3 : 0 " _ _ _
+    10 10 RayGen y
+:
+    cameraPos =. >0{ y
+    cameraLookAt =. norm >1{ y
+    dimensions =.  x
+    fov =. >2{ y
 
-)
-
-giveEmTehClampz =: 3 : 0 "0
-    if. y < 0
-        do. 0
-    elseif. y = _
-        do. _
-    elseif. y > 1
-        do. 1 
-    elseif. 1
-        do. y
-    end.
-)
-
-GetHitpoints =: 4 : 0
-    hitTValues =. 0{"1 y
-    direction =. >1} x
-    hitpoints =. hitTValues * direction
-    convertedHitpoints =. convertHitpoints hitpoints
-)
-
-NB. ******************************
-NB. SPHERES
-NB. ******************************
-IntersectSphere =: 4 : 0 " 1 1
-    direction =. >1} y
-    position =. >0} y
-    center =. >0} x
-    radius =. >1} x
+    w =. -cameraLookAt
+    u =. 0 0 _1 cross w
+    v =. w cross u
     
-    A =. dot~ direction
-    B =. 2*(direction dot (position -"1 center))
-    C =. (radius^2) -~ dot~ (position -"1 center) 
+    loc =. dimensions $ cameraPos
     
-    rootPart =. (*~B) - (4*A*C)
-    rootPart =. convertToInf rootPart
-    rootPart =. (%:"0) rootPart
-    plusPart =. rootPart + -B
-    minusPart =. rootPart -~ -B
-    plusPart =. plusPart % 2*A
-    minusPart =. minusPart % 2*A
-    plusPart <. minusPart
-)
+    ix =. dimensions $(1{dimensions)$i: 2%~ 1{dimensions 
+    iy =. |: (|. dimensions) $(0{dimensions)$i: 2%~ 0{dimensions
+    
+    dist =. 0{dimensions % 2 * 3 o. fov % 2
 
-IntersectSpheres =: 4 : 0 
-    sphereints =. x IntersectSphere y
-    converted =. convertToInf sphereints
-    sphereIndex =. i. # x
-    indexAppended =.  converted ,"0 sphereIndex
-    combinedTValues =.  (compareWithIndex)/ indexAppended
-    hitpoints =. (y GetHitpoints combinedTValues)
-    normals =.  hitpoints GetNormalsFromSphere (combinedTValues ; <x)
-    NB.combinedTValues ,"0 normals ,"0 hitpoints
-    combinedTValues ,"1 normals ,"1 hitpoints
-)
+    NB. -w * dist + ix * u + iy * v
 
-GetNormalsFromSphere =: 4 : 0
-    hitSphereIndeces =. 1{"1 >0{y
-    intersects =. >0{y
-    spheres =. >1{y
-    sphereCenters =. 0{"1 spheres
-    sphereIndices =. 1{"1 intersects
-    sphereCentreMap =.(sphereIndices ="_ 0 (i.#>sphereCenters)) (*"0 1) (>sphereCenters)
-    sphereCentreMap =. +"1/ sphereCentreMap
-    norm (x -"1 sphereCentreMap)
-)
+    rayDir =. (iy *"0 _ v) + (ix *"0 _ u) +"1 _ (-w*dist)
+    rayDir =. norm rayDir
 
-
-NB. **********************************
-NB. TRIANGLES
-NB. **********************************
-
-IntersectTriangle =: 4 : 0 " 1 1
-    direction =. >1} y
-    position =. >0} y
-    p1 =. >0} x
-    p2 =. >1} x
-    p3 =. >2} x
-
-    v1 =. p2 - p1
-    v2 =. p3 - p2
-    tNorm =. norm (v1 cross v2)
-
-    time =: (tNorm dot (p1 -"1 position)) % (direction dot tNorm)
-
-    intersectPoint =. position + direction * time
-    v1v3 =. p1 - p3
-    v2v1 =. p2 - p1
-    v3v2 =. p3 - p2
-
-    rayPointV1 =. intersectPoint -"1 p1
-    rayPointV2 =. intersectPoint -"1 p2
-    rayPointV3 =. intersectPoint -"1 p3
-
-    test1 =. (v2v1 cross"1 rayPointV1) dot tNorm
-    test2 =. (v3v2 cross"1 rayPointV2) dot tNorm
-    test3 =. (v1v3 cross"1 rayPointV3) dot tNorm
-    thing =:(0 < test1) *. (0 < test2) *. (0 < test3)
-    intersectPoint =. convertToInf thing * time
-)
-
-IntersectTriangles =: 4 : 0
-    triangleInts =. x IntersectTriangle y
-    converted =. convertToInf triangleInts
-    triangleIndex =. i. # x
-    indexAppended =. triangleInts ,"0 triangleIndex
-    combinedTValues =. (compareWithIndex)/indexAppended
-    hitpoints =. (y GetHitpoints combinedTValues)
-    normals =. hitpoints GetNormalsFromTriangle y
-    $normals
-)
-
-GetNormalsFromTriangle =: 4 : 0 " 1 1
-    direction =. >1} y
-    position =. >0} y
+   ((dimensions,3)$cameraPos) ,: rayDir                                   
 
 )
 
-NB. ******************************
-NB. Ray Stuff
-NB. ******************************
+Trace =: 3 : 0 " _ _ _
+    ((<(0 _2 0;1));a:) Trace y
+:
+    NB. x = scene
+    NB. y = rays
 
-CombineResults =: 4 : 0 "1
-    hitX =. 0{x
-    hitY =. 0{y
-    if. hitX < hitY
-    do. x
-    else. y
-    end.
+    spheres =. >0{x
+    tris    =. >1{x
+    rays    =. y
+
+    spheres
+    sphereTraced =. spheres SphereTrace rays
+    triTraced =. tris TriTrace rays
+
+    
+    buffer =. CombineBuffers/ (RankHelper triTraced)
+    buffer2 =. CombineBuffers/ (RankHelper sphereTraced)
+
+    buffer CombineBuffers buffer2
 )
 
-shade =: 4 : 0
+RankHelper =: 3 : 'if. 5 > $$y do. ,: y else. y end.'
+
+CombineBuffers =: 4 : 0 
+    dist1 =. 0{"(1)0{x
+    dist2 =. 0{"(1)0{y
+   
+    mask2 =. ((dist1 > dist2) +. ((0 < dist2) *. (dist1 = 0)))
+    mask1 =. ((dist1 <: dist2) +. ((0 < dist1) *. (dist2 = 0)))
+    distance =. (dist1 * mask1) + (mask2 * dist2)
+    normal =. ((1{x) *"1 0 mask1 ) + (mask2 *"0 1 (1{y))
+    hitpoint =. ((2{x) *"1 0 mask1) + (mask2 *"0 1 (2{y))
+    materialIndex =. ((3{x) *"1 0 mask1) + (mask2 *"0 1 (3{y))
+
+    (($normal)$(3#,distance)), normal, hitpoint ,: materialIndex
+)
+
+Shade =: 4 : 0
+    distances =. 0{y
+    normals   =. 1{y
+    hitpoints =. 2{y
+    indices   =. 0{"(1)3{y 
     cameraPos =. >0{>0{x
-    light =. >1{x
+    lights    =. >1{x
     materials =. >2{x
-    speculars =. >3{x
 
-    hitpoints =. >0{y
-    indicies =. >1{y
-    normals =. >2{y
+    light =. >0{lights
 
     toCamera =. norm (cameraPos -"1 hitpoints)
     toLight =. norm (light -"1 hitpoints)
@@ -186,72 +100,119 @@ shade =: 4 : 0
 
     ambient =. 0.1 0.1 0.1
 
-    material =. indicies{"0 _ materials 
-    specular =. indicies{"0 _ speculars
+    material =. >0{"1 indices {"0 _ materials
+    specular =. >1{"1 indices {"0 _ materials
 
     diffuse =. material * (toLight dot normals)
-    specularColor =. (giveEmTehClampz (toCamera dot LR)) ^ specular
+    specularColor =. (ClampLt0 (toCamera dot LR)) ^ specular
 
-    color =. diffuse + specularColor
-)
-
-RayGen =: 3 : 0
-
-cameraPos =. >0{>0{ y
-cameraLookAt =. norm >1{ > 0 { y
-dimensions =. > 1 { y
-fov =. > 2 { y
-
-w =. -cameraLookAt
-u =. 0 0 1 cross w
-v =. w cross u
-
-loc =. dimensions $ cameraPos
-
-ix =. dimensions $(1{dimensions)$i: 2%~ 1{dimensions 
-iy =. |: (|. dimensions) $(0{dimensions)$i: 2%~ 0{dimensions
-
-dist =. 0{dimensions % 2 * 3 o. fov % 2
-
-NB. -w * dist + ix * u + iy * v
-
-rayDir =. ((dimensions,3)$(-w*dist))
-rayDir =. rayDir + (iy*((dimensions,3)$v))
-rayDir =. rayDir + (ix*((dimensions,3)$u))
-rayDir =. norm rayDir
-
-
-   ((dimensions,3)$cameraPos) ; rayDir                                   
+    color =. diffuse + specularColor 
+    color =. color +"1 _ ambient
 
 )
 
-NB. ******************************
-NB. TESTING CODE
-NB. ******************************
+NB. ********
+NB. Spheres
+NB. ********
+SphereTrace =: 4 : 0 "1 _
+    direction =. 1{y
+    position  =. 0{y
+    center =. >0{x
+    radius =. >1{x
+    materialIndex =. >2{x
+    
+    A =. dot~ direction
+    B =. 2*(direction dot (position -"1 center))
+    C =. (radius^2) -~ dot~ (position -"1 center) 
+    
+    rootPart =. (*~B) - (4*A*C)
+    mask =. rootPart > 0
+    rootPart =. ClampLt0 rootPart
+    rootPart =. (%:"0) rootPart
+    plusPart =. rootPart + -B
+    minusPart =. rootPart -~ -B
+    plusPart =. plusPart % 2*A
+    minusPart =. minusPart % 2*A
+    distance =. plusPart <. minusPart
+    mask =. mask *. distance > 0 
 
-dimensions =. 10 10
+    hitpoint =. position + direction * distance
+    normal =. ClampLt0 norm hitpoint -"1 _ center
 
-camera =. 0 0 0; 0 _1 0
-light =. 2 0 _4
+    distance =. distance * mask  
+    normal   =. normal *"1 0 mask
+    hitpoint =. hitpoint *"1 0 mask
 
-rays =. RayGen camera; dimensions; 1p1%2
-sphere =. 0 _5 0; 1 ; 0
-sphere2 =. 2 _3 0; 1; 0
-spheres =. sphere ,: sphere2
-triangle1 =. 0 _5 _1; _1 _5 1; 1 _5 1
-triangle2 =. 1 _6 _2; 1 _6 0; 2 _6 _1
-triangles =. triangle1,:triangle2
+    (($normal)$(3#,distance)), normal, hitpoint ,: (($normal)$materialIndex)
+)
 
-materials =. (1 0.5 0,:0 0.5 1) ; (3 10)
 
-triangleIntersects =. triangles IntersectTriangles rays
-sphereIntersects =. (spheres IntersectSpheres rays)
+NB. ********
+NB. Triangles
+NB. ********
+TriTrace =: 4 : 0 " 1 _
+    direction =. >1{y
+    position =. >0{y
+    p1 =. >0{x
+    p2 =. >1{x
+    p3 =. >2{x
+    materialIndex =. >3{x
 
-NB.color =. (camera; light; materials) shade (hitpoints; indicies; normals)
-NB.drawableColor =. convertToDrawable color
-NB.drawableColor =. giveEmTehClampz drawableColor
-NB.biggestColor =. >./ >./ >./ drawableColor
-NB.color =. drawableColor %"1 biggestColor
+    v1 =. p2 -"1 p1
+    v2 =. p3 -"1 p2
 
-NB.viewrgb vector2image convertToDrawable sphereIntersects
-triangleIntersects
+    tNorm =. norm (v1 cross v2)
+
+    time =: (tNorm dot (p1 -"1 position)) % (direction dot tNorm)
+
+    intersectPoint =. position + direction * time
+    v1v3 =. p1 - p3
+    v2v1 =. p2 - p1
+    v3v2 =. p3 - p2
+ 
+    rayPointV1 =. intersectPoint -"1 p1
+    rayPointV2 =. intersectPoint -"1 p2
+    rayPointV3 =. intersectPoint -"1 p3
+
+    test1 =. (v2v1 cross"1 rayPointV1) dot tNorm
+    test2 =. (v3v2 cross"1 rayPointV2) dot tNorm
+    test3 =. (v1v3 cross"1 rayPointV3) dot tNorm
+    mask =:(0 < test1) *. (0 < test2) *. (0 < test3)
+
+    hitpoint =. (intersectPoint *"1 0 mask)
+    normal =. (tNorm *"_ 0 mask)
+    distance =. time * mask
+ 
+    
+    (($normal)$(3#,distance)), normal, hitpoint ,: (($normal)$materialIndex)
+)
+
+
+
+
+NB. ********
+NB. DISPLAY HELPER FUNCTIONS
+NB. ********
+disp =: <"1@(<.@(100&*))
+vector2image =: 3 : 0 
+    tmp =. |y
+    big =. >./, tmp
+    tmp =. tmp % big
+    tmp =. tmp * 255
+    tmp =. <. tmp
+    BGR tmp
+)
+imshow =:  'rgb' viewmat vector2image
+
+camera =. 0 0 0; 0 _1 0; 1p1%2
+dimensions =. 512 512
+
+spheres =. ((0 _2 0);1;0),:((0.1 _0.5 0);0.2;1)
+tris =. (5 _3 0; _5 _3 5; _5 _3 _5; 1)
+lights =. ((0 0 3; 1 1 1))
+materials =. ((0 0.5 1; 3; 0; 1; 1),:(1 0.5 0; 5; 0; 1; 1))
+NB. (camera; lights; <materials) Shade
+results =:  (camera; lights; <materials) Shade (spheres;<tris) Trace dimensions RayGen camera
+$results
+
+imshow results
